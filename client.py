@@ -2,39 +2,41 @@ import socket
 import threading
 
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(("127.0.0.1", 5678))
-
-
 class TCPClient:
-    nickname = input("Выберите имя пользователя: ")
+    _START_SESSION = True
+    NICKNAME = input("Enter your name: ")
+    NICKNAMES = []
 
-    def __init__(self, client: socket.socket):
-        self.client = client
+    def __init__(self):
+        self._host = '127.0.0.1'
+        self._port = 5678
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect((self._host, self._port))
 
     def receive(self):
         while True:
             try:
-                message = self.client.recv(2**16).decode("utf-8")
-                if message == "NICKNAME":
-                    self.client.sendall(self.nickname.encode("utf-8"))
-                else:
-                    print(message)
-            except Exception as er:
-                print("Error: ", er)
+                if self._START_SESSION:
+                    self._START_SESSION = False
+                    self.NICKNAMES.append(self.NICKNAME)
+                    continue
+                message = self.client.recv(1024).decode('utf-8')
+                print(message)
+            except Exception as err:
+                print("Error: ", err)
                 self.client.close()
                 break
 
     def write(self):
-        while True:
-            message = "{}: {}".format(self.nickname, input(""))
-            self.client.sendall(message.encode("utf-8"))
+        while True:  # Вывод сообщений в чат
+            message = '{}: {}'.format(self.NICKNAME, input(''))
+            self.client.send(message.encode('utf-8'))
 
 
 try:
-    receive_thread = threading.Thread(target=TCPClient(client).receive)
+    receive_thread = threading.Thread(target=TCPClient().receive)
     receive_thread.start()
-    write_thread = threading.Thread(target=TCPClient(client).write)
+    write_thread = threading.Thread(target=TCPClient().write)
     write_thread.start()
 except KeyboardInterrupt:
     print(end="\r")
